@@ -1,458 +1,457 @@
-import time  # Импортируем модуль time для работы с задержками (wait_for_timeout) и форматирования времени в логах
-import traceback  # Импортируем traceback для вывода подробного стека ошибок при критических сбоях
-from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError  # Импортируем Playwright (синхронная версия) и переименовываем TimeoutError для избежания конфликта
+import time  # подключаю time чтоб паузы делать и время в логах показывать
+import traceback  # это если что-то совсем сломается, чтоб стек ошибки увидеть
+from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError  # импортирую плейрайт, а то у него ТаймаутЕррор конфликтует с питоновским, переименовал
 
-# ПОЛНЫЙ СПИСОК ГОРОДОВ (строго по скриншоту, отсортирован по алфавиту)
-ALL_CITIES = [  # Начинаем объявление списка городов
-    "Абакан", "Анапа", "Аша",  # Города на А
-    "Барнаул", "Благовещенск", "Бузулук",  # Города на Б
-    "Волжск", "Вязники", "Вятские Поляны",  # Города на В
-    "Геленджик", "Георгиевск", "Глазов", "Гуково", "Гусь-Хрустальный",  # Города на Г
-    "Ейск", "Екатеринбург", "Ессентуки",  # Города на Е
-    "Златоуст",  # Города на З
-    "Иваново", "Ижевск", "Ипатово", "Ирбит", "Иркутск", "Искитим",  # Города на И
-    "Казань", "Каменск-Уральский", "Каменск-Шахтинский", "Камышин", "Каневская",  # Города на К (часть 1)
-    "Карталы", "Кемерово", "Кимовск", "Киров", "Кирово-Чепецк", "Ковров",  # Города на К (часть 2)
-    "Кольчугино", "Комсомольск-на-Амуре", "Кореновск", "Краснодар", "Красноярск",  # Города на К (часть 3)
-    "Кузнецк", "Кумертау", "Курган", "Курганск",  # Города на К (часть 4)
-    "Лабинск", "Ленинск-Кузнецкий", "Лесосибирск",  # Города на Л
-    "Магнитогорск", "Майкоп", "Маркс", "Междуреченск", "Миасс", "Минеральные Воды",  # Города на М (часть 1)
-    "Михайловск", "Можга", "Москва",  # Города на М (часть 2)
-    "Набережные Челны", "Нагайбак", "Находка", "Невинномысск", "Нефтекамск",  # Города на Н (часть 1)
-    "Нижневартовск", "Нижнекамск", "Нижний Тагил", "Новокузнецк", "Новосибирск",  # Города на Н (часть 2)
-    "Новошахтинск",  # Города на Н (часть 3)
-    "Омск", "Оренбург", "Орск", "Отрадный",  # Города на О
-    "Партизанск", "Пермь",  # Города на П
-    "Рыбинск", "Рычск", "Рязань",  # Города на Р
-    "Салават", "Самара", "Санкт-Петербург", "Сарапул", "Сатка", "Саяногорск",  # Города на С (часть 1)
-    "Светлоград", "Севастополь", "Североуральск", "Северская", "Сердобск",  # Города на С (часть 2)
-    "Славянск-на-Кубани", "Советский", "Соликамск", "Сосновка", "Спасск-Дальний",  # Города на С (часть 3)
-    "Стерлитамак", "Сургут", "Сходня", "Сыктывкар",  # Города на С (часть 4)
-    "Таганрог", "Тамбов", "Ташкент", "Темрюк", "Томск", "Туймазы", "Тулун", "Тюмень",  # Города на Т
-    "Улан-Удэ", "Уссурийск", "Усть-Лабинск", "Уфа",  # Города на У
-    "Чайковский", "Чебаркуль", "Чебоксары", "Челябинск", "Череповец", "Чусовой",  # Города на Ч
-    "Шилово",  # Города на Ш
-    "Южноуральск"  # Города на Ю
-]  # Конец списка городов
+# тут все города которые надо проверить, взял со скрина и отсортировал по алфавиту
+ALL_CITIES = [  # начинаю список городов
+    "Абакан", "Анапа", "Аша",  # города на А
+    "Барнаул", "Благовещенск", "Бузулук",  # города на Б
+    "Волжск", "Вязники", "Вятские Поляны",  # города на В
+    "Геленджик", "Георгиевск", "Глазов", "Гуково", "Гусь-Хрустальный",  # города на Г
+    "Ейск", "Екатеринбург", "Ессентуки",  # города на Е
+    "Златоуст",  # города на З
+    "Иваново", "Ижевск", "Ипатово", "Ирбит", "Иркутск", "Искитим",  # города на И
+    "Казань", "Каменск-Уральский", "Каменск-Шахтинский", "Камышин", "Каневская",  # города на К (часть 1)
+    "Карталы", "Кемерово", "Кимовск", "Киров", "Кирово-Чепецк", "Ковров",  # города на К (часть 2)
+    "Кольчугино", "Комсомольск-на-Амуре", "Кореновск", "Краснодар", "Красноярск",  # города на К (часть 3)
+    "Кузнецк", "Кумертау", "Курган", "Курганск",  # города на К (часть 4)
+    "Лабинск", "Ленинск-Кузнецкий", "Лесосибирск",  # города на Л
+    "Магнитогорск", "Майкоп", "Маркс", "Междуреченск", "Миасс", "Минеральные Воды",  # города на М (часть 1)
+    "Михайловск", "Можга", "Москва",  # города на М (часть 2)
+    "Набережные Челны", "Нагайбак", "Находка", "Невинномысск", "Нефтекамск",  # города на Н (часть 1)
+    "Нижневартовск", "Нижнекамск", "Нижний Тагил", "Новокузнецк", "Новосибирск",  # города на Н (часть 2)
+    "Новошахтинск",  # города на Н (часть 3)
+    "Омск", "Оренбург", "Орск", "Отрадный",  # города на О
+    "Партизанск", "Пермь",  # города на П
+    "Рыбинск", "Рычск", "Рязань",  # города на Р
+    "Салават", "Самара", "Санкт-Петербург", "Сарапул", "Сатка", "Саяногорск",  # города на С (часть 1)
+    "Светлоград", "Севастополь", "Североуральск", "Северская", "Сердобск",  # города на С (часть 2)
+    "Славянск-на-Кубани", "Советский", "Соликамск", "Сосновка", "Спасск-Дальний",  # города на С (часть 3)
+    "Стерлитамак", "Сургут", "Сходня", "Сыктывкар",  # города на С (часть 4)
+    "Таганрог", "Тамбов", "Ташкент", "Темрюк", "Томск", "Туймазы", "Тулун", "Тюмень",  # города на Т
+    "Улан-Удэ", "Уссурийск", "Усть-Лабинск", "Уфа",  # города на У
+    "Чайковский", "Чебаркуль", "Чебоксары", "Челябинск", "Череповец", "Чусовой",  # города на Ч
+    "Шилово",  # города на Ш
+    "Южноуральск"  # города на Ю
+]  # конец списка городов
 
-report = []  # Глобальный список для сбора итогового отчета (например, "город - обнаружена бесплатная доставка")
-processed_cities = set()  # Множество (set) для хранения уже обработанных городов, чтобы избежать повторной работы
-
-
-def log_message(message):  # Вспомогательная функция для красивого вывода сообщений в консоль
-    print(f"[{time.strftime('%H:%M:%S')}] {message}")  # Печатаем текущее время в квадратных скобках и само сообщение
+report = []  # сюда буду складывать результаты проверки, потом из этого отчёт соберу
+processed_cities = set()  # сетка для уже обработанных городов, чтоб два раза не гонять один и тот же
 
 
-def open_city_selector(page):  # Функция для открытия модального окна выбора города
-    """Открываем список городов"""  # Докстринг (описание функции)
-    try:  # Начинаем блок обработки исключений
-        city_button = page.locator(  # Ищем кнопку, открывающую список городов
-            "button[class*='FirstLevelMenu_button__']"  # Используем CSS-селектор: кнопка, в классе которой есть эта строка
-        ).first  # Берем первый найденный элемент (если их несколько)
-        city_button.scroll_into_view_if_needed()  # Прокручиваем страницу к этой кнопке, чтобы она была видна
-        page.wait_for_timeout(500)  # Ждем полсекунды для стабильности
-        city_button.click()  # Кликаем по кнопке, открывая модалку
-        log_message("✅ Селектор городов открыт")  # Логируем успех
-        page.wait_for_timeout(2000)  # Ждем 2 секунды, чтобы модалка успела прогрузиться
-        return True  # Возвращаем True, если все прошло успешно
-    except Exception as e:  # Если произошла ошибка (например, кнопка не найдена)
-        log_message(f"❌ Не удалось открыть селектор городов: {e}")  # Логируем ошибку
-        return False  # Возвращаем False
+def log_message(message):  # простая функция чтоб красиво в консоль писать
+    print(f"[{time.strftime('%H:%M:%S')}] {message}")  # время в скобках и само сообщение
 
 
-def select_city(page, city_name):  # Функция для выбора конкретного города из списка
-    """Выбор города по имени из списка ALL_CITIES"""  # Докстринг
-    try:  # Блок обработки исключений
-        # 1. Открываем селектор городов
-        if not open_city_selector(page):  # Вызываем функцию открытия модалки
-            return False  # Если не удалось открыть, возвращаем False
+def open_city_selector(page):  # функция чтоб открыть модалку выбора города
+    """Открываем список городов"""  # описание функции
+    try:  # пробуем, вдруг чё пойдёт не так
+        city_button = page.locator(  # ищу кнопку которая открывает список городов
+            "button[class*='FirstLevelMenu_button__']"  # селектор по куску класса, обычно работает
+        ).first  # беру первую найденную
+        city_button.scroll_into_view_if_needed()  # прокручиваю к кнопке чтоб точно видно было
+        page.wait_for_timeout(500)  # жду полсекунды, а то иногда не кликается
+        city_button.click()  # кликаю, модалка открывается
+        log_message("✅ Селектор городов открыт")  # пишу что всё ок
+        page.wait_for_timeout(2000)  # жду 2 сек пока модалка прогрузится
+        return True  # верну тру, значит всё получилось
+    except Exception as e:  # если кнопку не нашел или ещё чё
+        log_message(f"❌ Не удалось открыть селектор городов: {e}")  # пишу ошибку
+        return False  # верну фолс
 
-        # 2. Ждем загрузки модального окна с городами
-        try:  # Вложенный try для ожидания элементов модалки
-            page.wait_for_selector(  # Ждем, пока на странице появится хотя бы один элемент с классом города
-                ".CitiesModal_cityName__W4Od4", timeout=10000  # Таймаут 10 секунд
+
+def select_city(page, city_name):  # функция выбора конкретного города
+    """Выбор города по имени из списка ALL_CITIES"""  # описание
+    try:  # пробуем
+        # 1. сначала открываю модалку
+        if not open_city_selector(page):  # если не открылась
+            return False  # то дальше смысла нет
+
+        # 2. жду пока в модалке появятся города
+        try:  # вложенный трай, чтоб если чё не сломать всё
+            page.wait_for_selector(  # жду элемент с классом города
+                ".CitiesModal_cityName__W4Od4", timeout=10000  # максимум 10 секунд жду
             )
-        except PlaywrightTimeoutError:  # Если за 10 секунд не дождались
-            log_message("⚠️ Модальное окно с городами не загрузилось")  # Логируем предупреждение
-            return False  # Возвращаем False
+        except PlaywrightTimeoutError:  # если за 10 сек не дождался
+            log_message("⚠️ Модальное окно с городами не загрузилось")  # пишу предупреждение
+            return False  # возвращаю фолс
 
-        # 3. Ищем город в модальном окне
-        log_message(f"Ищем город: {city_name}")  # Логируем начало поиска
+        # 3. теперь ищу сам город
+        log_message(f"Ищем город: {city_name}")  # пишу какой ищу
 
-        # Способ 1: через класс CitiesModal_cityName__W4Od4 (самый надежный)
-        try:  # Пытаемся найти точное совпадение по тексту
-            city_buttons = page.locator(".CitiesModal_cityName__W4Od4").all()  # Получаем список всех кнопок с городами
-            for button in city_buttons:  # Перебираем каждую кнопку
-                if button.inner_text().strip() == city_name:  # Если текст кнопки (очищенный от пробелов) совпадает с искомым
-                    button.scroll_into_view_if_needed()  # Прокручиваем к ней
-                    page.wait_for_timeout(500)  # Ждем
-                    button.click()  # Кликаем
-                    log_message(f"✅ Город {city_name} выбран")  # Логируем успех
-                    page.wait_for_timeout(2000)  # Ждем обновления страницы
-                    return True  # Возвращаем True
-        except Exception:  # Если возникла ошибка
-            pass  # Игнорируем и переходим к следующему способу
+        # способ 1: по классу, самый надёжный
+        try:  # пробую
+            city_buttons = page.locator(".CitiesModal_cityName__W4Od4").all()  # беру все кнопки городов
+            for button in city_buttons:  # перебираю каждую
+                if button.inner_text().strip() == city_name:  # если текст совпал точь-в-точь
+                    button.scroll_into_view_if_needed()  # прокручиваю
+                    page.wait_for_timeout(500)  # жду
+                    button.click()  # кликаю
+                    log_message(f"✅ Город {city_name} выбран")  # пишу что выбрал
+                    page.wait_for_timeout(2000)  # жду пока страница обновится
+                    return True  # всё ок
+        except Exception:  # если ошибка
+            pass  # молча идём дальше
 
-        # Способ 2: через XPath с классом (если первый способ не сработал)
-        try:  # Пытаемся найти через XPath
-            xpath = (  # Формируем XPath-запрос
-                f"//button[contains(@class, 'CitiesModal_cityName__') "  # Ищем кнопку, в классе которой есть нужная строка
-                f"and text()='{city_name}']"  # И текст которой точно равен названию города
+        # способ 2: через XPath, если первый не сработал
+        try:  # пробую
+            xpath = (  # собираю xpath
+                f"//button[contains(@class, 'CitiesModal_cityName__') "  # кнопка с нужным классом
+                f"and text()='{city_name}']"  # и точным текстом
             )
-            button = page.locator(f"xpath={xpath}").first  # Берем первый элемент по XPath
-            button.wait_for(state="visible", timeout=5000)  # Ждем, пока он станет видимым (5 сек)
-            button.scroll_into_view_if_needed()  # Прокручиваем
-            page.wait_for_timeout(500)  # Ждем
-            button.click()  # Кликаем
-            log_message(f"✅ Город {city_name} выбран через XPath")  # Логируем
-            page.wait_for_timeout(2000)  # Ждем
-            return True  # Возвращаем True
-        except Exception:  # Если ошибка
-            pass  # Игнорируем
+            button = page.locator(f"xpath={xpath}").first  # беру первую
+            button.wait_for(state="visible", timeout=5000)  # жду чтоб стала видимой
+            button.scroll_into_view_if_needed()  # прокручиваю
+            page.wait_for_timeout(500)  # жду
+            button.click()  # кликаю
+            log_message(f"✅ Город {city_name} выбран через XPath")  # пишу
+            page.wait_for_timeout(2000)  # жду
+            return True  # ок
+        except Exception:  # если ошибка
+            pass  # дальше
 
-        # Способ 3: через частичное совпадение (если в названии есть лишние символы)
-        try:  # Пытаемся найти по вхождению подстроки
-            city_buttons = page.locator(  # Ищем все кнопки с классом города
+        # способ 3: частичное совпадение, вдруг там пробелы лишние
+        try:  # пробую
+            city_buttons = page.locator(  # ищу все кнопки городов
                 "button[class*='CitiesModal_cityName__']"
             ).all()
-            for button in city_buttons:  # Перебираем
-                if city_name in button.inner_text():  # Если название города является частью текста кнопки
-                    button.scroll_into_view_if_needed()  # Прокручиваем
-                    page.wait_for_timeout(500)  # Ждем
-                    button.click()  # Кликаем
-                    log_message(  # Логируем
+            for button in city_buttons:  # перебираю
+                if city_name in button.inner_text():  # если название города входит в текст кнопки
+                    button.scroll_into_view_if_needed()  # прокручиваю
+                    page.wait_for_timeout(500)  # жду
+                    button.click()  # кликаю
+                    log_message(  # пишу
                         f"✅ Город {city_name} выбран (частичное совпадение)"
                     )
-                    page.wait_for_timeout(2000)  # Ждем
-                    return True  # Возвращаем True
-        except Exception:  # Если ошибка
-            pass  # Игнорируем
+                    page.wait_for_timeout(2000)  # жду
+                    return True  # ок
+        except Exception:  # если ошибка
+            pass  # дальше
 
-        log_message(f"⚠️ Город {city_name} не найден в списке")  # Если ни один способ не сработал
-        return False  # Возвращаем False
+        log_message(f"⚠️ Город {city_name} не найден в списке")  # если ни один способ не сработал
+        return False  # фолс
 
-    except Exception as e:  # Если произошла ошибка на уровне всей функции
-        log_message(f"Ошибка при выборе города {city_name}: {e}")  # Логируем
-        return False  # Возвращаем False
+    except Exception as e:  # если ошибка на уровне всей функции
+        log_message(f"Ошибка при выборе города {city_name}: {e}")  # пишу
+        return False  # фолс
 
 
-def clear_basket_force(page):  # Функция для принудительной очистки корзины (удаления всех товаров)
-    """Принудительная очистка корзины"""  # Докстринг
-    log_message("Очистка корзины...")  # Логируем начало
+def clear_basket_force(page):  # функция чтоб принудительно очистить корзину
+    """Принудительная очистка корзины"""  # описание
+    log_message("Очистка корзины...")  # пишу что начал
 
-    try:  # Блок обработки исключений
-        page.goto("https://www.leran.pro/basket/", wait_until="domcontentloaded")  # Переходим на страницу корзины
-        page.wait_for_timeout(5000)  # Ждем 5 секунд загрузки
+    try:  # пробуем
+        page.goto("https://www.leran.pro/basket/", wait_until="domcontentloaded")  # иду в корзину
+        page.wait_for_timeout(5000)  # жду 5 сек загрузки
 
-        delete_count = 0  # Счетчик удаленных товаров
-        max_attempts = 30  # Максимальное количество попыток удаления (защита от бесконечного цикла)
+        delete_count = 0  # счётчик удалённых товаров
+        max_attempts = 30  # максимум попыток, чтоб не зациклиться
 
-        while delete_count < max_attempts:  # Пока не удалили максимум или не очистили корзину
-            try:  # Вложенный try для каждой попытки
-                deleted = False  # Флаг: удалось ли удалить товар в этой итерации
+        while delete_count < max_attempts:  # пока не удалил всё или не кончились попытки
+            try:  # пробуем
+                deleted = False  # флаг, удалил ли товар в этой итерации
 
-                # Способ 1: через use[href*="trash"]
-                try:  # Пытаемся найти иконку корзины (мусорку)
-                    delete_icon = page.locator(  # Ищем SVG-иконку с ссылкой на "trash"
+                # способ 1: через иконку мусорки
+                try:  # пробую
+                    delete_icon = page.locator(  # ищу svg с ссылкой на trash
                         "use[href*='trash']"
                     ).first
-                    if delete_icon.count() > 0:  # Если такая иконка есть на странице
-                        delete_button = delete_icon.locator(  # Находим родительскую кнопку для этой иконки
+                    if delete_icon.count() > 0:  # если нашел
+                        delete_button = delete_icon.locator(  # ищу родительскую кнопку
                             "xpath=./ancestor::button"
                         ).first
-                        delete_button.scroll_into_view_if_needed()  # Прокручиваем к кнопке
-                        page.wait_for_timeout(500)  # Ждем
-                        delete_button.click()  # Кликаем (удаляем товар)
-                        deleted = True  # Флаг успеха
-                        log_message(  # Логируем
+                        delete_button.scroll_into_view_if_needed()  # прокручиваю
+                        page.wait_for_timeout(500)  # жду
+                        delete_button.click()  # кликаю, товар удаляется
+                        deleted = True  # флаг что удалил
+                        log_message(  # пишу
                             f"Удален товар #{delete_count + 1}"
                         )
-                except Exception:  # Если ошибка
-                    pass  # Игнорируем
+                except Exception:  # если ошибка
+                    pass  # дальше
 
-                # Способ 2: через JavaScript (если первый способ не сработал)
-                if not deleted:  # Если товар еще не удален
-                    js_delete = """  # Пишем JS-скрипт для поиска и клика по кнопке удаления
+                # способ 2: через JS, если первый не сработал
+                if not deleted:  # если товар ещё не удалён
+                    js_delete = """  # пишу js скрипт который ищет и кликает
                     () => {
-                        const svg = document.querySelector('use[href*="trash"]');  // Ищем иконку
-                        if (svg) {  // Если нашли
-                            const btn = svg.closest('button');  // Находим родительскую кнопку
-                            if (btn) {  // Если кнопка есть
-                                btn.click();  // Кликаем
-                                return true;  // Возвращаем успех
+                        const svg = document.querySelector('use[href*="trash"]');  // ищу иконку
+                        if (svg) {  // если нашел
+                            const btn = svg.closest('button');  // ищу родительскую кнопку
+                            if (btn) {  // если кнопка есть
+                                btn.click();  // кликаю
+                                return true;  // вернул успех
                             }
                         }
-                        return false;  // Если ничего не нашли
+                        return false;  // если ничего не нашел
                     }
                     """
-                    if page.evaluate(js_delete):  # Выполняем JS на странице
-                        deleted = True  # Флаг успеха
-                        log_message(f"Удален товар #{delete_count + 1}")  # Логируем
+                    if page.evaluate(js_delete):  # выполняю js
+                        deleted = True  # флаг
+                        log_message(f"Удален товар #{delete_count + 1}")  # пишу
 
-                if deleted:  # Если товар был удален
-                    delete_count += 1  # Увеличиваем счетчик
-                    page.wait_for_timeout(1500)  # Ждем 1.5 секунды перед следующей попыткой
-                else:  # Если товар не удален (возможно, корзина пуста)
-                    # Проверяем, пуста ли корзина
-                    try:  # Ищем текст "Корзина пуста"
-                        empty_check = page.locator(
+                if deleted:  # если товар удалился
+                    delete_count += 1  # плюсую счётчик
+                    page.wait_for_timeout(1500)  # жду полторы сек перед следующим
+                else:  # если не удалился, может корзина пуста
+                    # проверяю не пустая ли корзина
+                    try:  # пробую
+                        empty_check = page.locator(  # ищу текст про пустую корзину
                             "text=/Корзина пуста|пуста/"
                         ).all()
-                        if empty_check:  # Если нашли
-                            log_message("✅ Корзина пуста")  # Логируем
-                            break  # Выходим из цикла
-                    except Exception:  # Если ошибка
-                        pass  # Игнорируем
+                        if empty_check:  # если нашел
+                            log_message("✅ Корзина пуста")  # пишу
+                            break  # выхожу из цикла
+                    except Exception:  # если ошибка
+                        pass  # дальше
 
-                    log_message("✅ Корзина очищена")  # Логируем, что очищена
-                    break  # Выходим из цикла
+                    log_message("✅ Корзина очищена")  # пишу что очищена
+                    break  # выхожу
 
-            except Exception as e:  # Если ошибка в итерации
-                log_message(f"Ошибка при удалении: {e}")  # Логируем
-                break  # Выходим из цикла
+            except Exception as e:  # если ошибка в итерации
+                log_message(f"Ошибка при удалении: {e}")  # пишу
+                break  # выхожу
 
-        if delete_count == 0:  # Если не удалили ни одного товара
-            log_message("⚠️ Не удалось удалить товары")  # Логируем предупреждение
+        if delete_count == 0:  # если ничё не удалил
+            log_message("⚠️ Не удалось удалить товары")  # пишу предупреждение
 
-        return delete_count  # Возвращаем количество удаленных товаров
+        return delete_count  # возвращаю сколько удалил
 
-    except Exception as e:  # Если ошибка на уровне всей функции
-        log_message(f"Ошибка очистки корзины: {e}")  # Логируем
-        return 0  # Возвращаем 0
+    except Exception as e:  # если ошибка на уровне всей функции
+        log_message(f"Ошибка очистки корзины: {e}")  # пишу
+        return 0  # верну 0
 
 
-def add_product_to_cart(page):  # Функция для добавления одного товара в корзину
-    """Добавление товара в корзину"""  # Докстринг
-    try:  # Блок обработки исключений
-        page.wait_for_selector(  # Ждем, пока на странице появятся карточки товаров
-            "div[class*='ProductLineCard']", timeout=10000  # Таймаут 10 секунд
+def add_product_to_cart(page):  # функция чтоб добавить один товар в корзину
+    """Добавление товара в корзину"""  # описание
+    try:  # пробую
+        page.wait_for_selector(  # жду пока появятся карточки товаров
+            "div[class*='ProductLineCard']", timeout=10000  # максимум 10 сек
         )
 
-        js = """  # Пишем JS-скрипт для добавления товара
+        js = """  # js скрипт для добавления
         () => {
-            const product = document.querySelector('div[class*="ProductLineCard"]');  // Находим первую карточку товара
-            if (product) {  // Если карточка есть
-                const btn = product.querySelector('span[class*="basketText"]');  // Ищем кнопку "В корзину" внутри карточки
-                if (btn && btn.textContent.includes('В корзину')) {  // Если кнопка найдена и содержит нужный текст
-                    btn.click();  // Кликаем
-                    return true;  // Возвращаем успех
+            const product = document.querySelector('div[class*="ProductLineCard"]');  // ищу первую карточку
+            if (product) {  // если есть
+                const btn = product.querySelector('span[class*="basketText"]');  // ищу кнопку В корзину
+                if (btn && btn.textContent.includes('В корзину')) {  // если нашел и текст подходит
+                    btn.click();  // кликаю
+                    return true;  // успех
                 }
-                const buttons = product.querySelectorAll('button');  // Если span не нашли, ищем все кнопки внутри карточки
-                for (let b of buttons) {  // Перебираем кнопки
-                    if (b.textContent.includes('В корзину')) {  // Если текст кнопки подходит
-                        b.click();  // Кликаем
-                        return true;  // Возвращаем успех
+                const buttons = product.querySelectorAll('button');  // если span не нашел, ищу кнопки
+                for (let b of buttons) {  // перебираю
+                    if (b.textContent.includes('В корзину')) {  // если текст подходит
+                        b.click();  // кликаю
+                        return true;  // успех
                     }
                 }
             }
-            return false;  // Если ничего не нашли
+            return false;  // ничего не нашел
         }
         """
 
-        if page.evaluate(js):  # Выполняем JS на странице
-            log_message("✅ Товар добавлен в корзину")  # Логируем успех
-            return True  # Возвращаем True
+        if page.evaluate(js):  # выполняю js
+            log_message("✅ Товар добавлен в корзину")  # пишу что добавил
+            return True  # ок
 
-        return False  # Если не удалось, возвращаем False
+        return False  # не получилось
 
-    except Exception as e:  # Если ошибка
-        log_message(f"Ошибка при добавлении товара: {e}")  # Логируем
-        return False  # Возвращаем False
+    except Exception as e:  # если ошибка
+        log_message(f"Ошибка при добавлении товара: {e}")  # пишу
+        return False  # фолс
 
 
-def process_city(page, city_name):  # Функция для обработки одного города (основная логика)
-    """Обработка одного города"""  # Докстринг
-    if city_name in processed_cities:  # Если город уже обработан
-        return  # Выходим из функции
+def process_city(page, city_name):  # функция обработки одного города, тут вся основная логика
+    """Обработка одного города"""  # описание
+    if city_name in processed_cities:  # если город уже обработан
+        return  # выхожу
 
-    log_message(f"\n{'='*50}")  # Логируем разделитель
-    log_message(f"Обработка города: {city_name}")  # Логируем название города
+    log_message(f"\n{'='*50}")  # рисую разделитель
+    log_message(f"Обработка города: {city_name}")  # пишу какой город
 
-    try:  # Блок обработки исключений
-        # 1. Открываем главную
-        page.goto("https://www.leran.pro/", wait_until="domcontentloaded")  # Переходим на главную страницу
-        page.wait_for_timeout(3000)  # Ждем 3 секунды
+    try:  # пробую
+        # 1. открываю главную
+        page.goto("https://www.leran.pro/", wait_until="domcontentloaded")  # иду на главную
+        page.wait_for_timeout(3000)  # жду 3 сек
 
-        # 2. Выбираем город
-        if not select_city(page, city_name):  # Вызываем функцию выбора города
-            log_message(f"⚠️ Пропускаем город {city_name}")  # Если не удалось выбрать, логируем
-            return  # Выходим из функции (пропускаем город)
+        # 2. выбираю город
+        if not select_city(page, city_name):  # если не получилось выбрать
+            log_message(f"⚠️ Пропускаем город {city_name}")  # пишу что пропускаю
+            return  # выхожу
 
-        # 3. Переходим в категорию пылесосов
-        log_message("Переход в категорию пылесосов...")  # Логируем
-        page.goto(  # Переходим на страницу категории
+        # 3. иду в категорию пылесосов
+        log_message("Переход в категорию пылесосов...")  # пишу
+        page.goto(  # перехожу
             "https://www.leran.pro/cat/tehnika_dlya_doma/pylesosy/",
             wait_until="domcontentloaded",
         )
-        page.wait_for_timeout(5000)  # Ждем 5 секунд загрузки
+        page.wait_for_timeout(5000)  # жду 5 сек
 
-        # 4. Добавляем товар в корзину
-        if not add_product_to_cart(page):  # Вызываем функцию добавления товара
-            log_message("❌ Не удалось добавить товар, пропускаем город")  # Если не удалось, логируем
-            return  # Выходим
+        # 4. добавляю товар в корзину
+        if not add_product_to_cart(page):  # если не добавился
+            log_message("❌ Не удалось добавить товар, пропускаем город")  # пишу
+            return  # выхожу
 
-        page.wait_for_timeout(3000)  # Ждем 3 секунды
+        page.wait_for_timeout(3000)  # жду 3 сек
 
-        # 5. Переходим в корзину
-        log_message("Переход в корзину...")  # Логируем
-        page.goto("https://www.leran.pro/basket/", wait_until="domcontentloaded")  # Переходим в корзину
-        page.wait_for_timeout(5000)  # Ждем 5 секунд
+        # 5. иду в корзину
+        log_message("Переход в корзину...")  # пишу
+        page.goto("https://www.leran.pro/basket/", wait_until="domcontentloaded")  # перехожу
+        page.wait_for_timeout(5000)  # жду 5 сек
 
-        # 6. Оформляем заказ
-        log_message("Оформление заказа...")  # Логируем
-        checkout_found = False  # Флаг: найдена ли кнопка оформления
+        # 6. оформляю заказ
+        log_message("Оформление заказа...")  # пишу
+        checkout_found = False  # флаг, нашел ли кнопку
 
-        js = """  # JS-скрипт для поиска и клика по кнопке оформления заказа
+        js = """  # js чтоб найти и кликнуть по кнопке оформления
         () => {
-            const btns = document.querySelectorAll('button');  // Находим все кнопки
-            for (let btn of btns) {  // Перебираем
-                if (btn.textContent.includes('Оформить заказ') ||  // Если текст содержит "Оформить заказ"
-                    btn.textContent.includes('Перейти к оформлению')) {  // Или "Перейти к оформлению"
-                    btn.click();  // Кликаем
-                    return true;  // Возвращаем успех
+            const btns = document.querySelectorAll('button');  // беру все кнопки
+            for (let btn of btns) {  // перебираю
+                if (btn.textContent.includes('Оформить заказ') ||  // если текст про оформление
+                    btn.textContent.includes('Перейти к оформлению')) {  // или про переход
+                    btn.click();  // кликаю
+                    return true;  // успех
                 }
             }
-            return false;  // Если не нашли
+            return false;  // не нашел
         }
         """
 
-        if page.evaluate(js):  # Выполняем JS
-            checkout_found = True  # Устанавливаем флаг
-            log_message("✅ Кнопка оформления найдена через JS")  # Логируем
+        if page.evaluate(js):  # выполняю js
+            checkout_found = True  # флаг
+            log_message("✅ Кнопка оформления найдена через JS")  # пишу
 
-        if not checkout_found:  # Если JS не сработал, пробуем через Playwright
-            try:  # Пытаемся найти кнопку
-                checkout_buttons = page.locator(  # Ищем кнопки с текстом
+        if not checkout_found:  # если js не сработал, пробую через плейрайт
+            try:  # пробую
+                checkout_buttons = page.locator(  # ищу кнопки с текстом
                     "button:has-text('Оформить'), button:has-text('Перейти')"
                 ).all()
-                for btn in checkout_buttons:  # Перебираем
-                    txt = btn.inner_text()  # Получаем текст
-                    if "Оформить" in txt or "Перейти" in txt:  # Если текст подходит
-                        btn.scroll_into_view_if_needed()  # Прокручиваем
-                        page.wait_for_timeout(500)  # Ждем
-                        btn.click()  # Кликаем
-                        checkout_found = True  # Устанавливаем флаг
-                        log_message("✅ Кнопка оформления найдена")  # Логируем
-                        break  # Выходим из цикла
-            except Exception:  # Если ошибка
-                pass  # Игнорируем
+                for btn in checkout_buttons:  # перебираю
+                    txt = btn.inner_text()  # беру текст
+                    if "Оформить" in txt or "Перейти" in txt:  # если подходит
+                        btn.scroll_into_view_if_needed()  # прокручиваю
+                        page.wait_for_timeout(500)  # жду
+                        btn.click()  # кликаю
+                        checkout_found = True  # флаг
+                        log_message("✅ Кнопка оформления найдена")  # пишу
+                        break  # выхожу
+            except Exception:  # если ошибка
+                pass  # дальше
 
-        if not checkout_found:  # Если кнопка так и не найдена
-            log_message("⚠️ Кнопка оформления не найдена")  # Логируем
-            page.screenshot(path=f"checkout_error_{city_name}.png")  # Делаем скриншот для отладки
+        if not checkout_found:  # если кнопку так и не нашел
+            log_message("⚠️ Кнопка оформления не найдена")  # пишу
+            page.screenshot(path=f"checkout_error_{city_name}.png")  # делаю скрин для отладки
 
-        page.wait_for_timeout(5000)  # Ждем 5 секунд после оформления
+        page.wait_for_timeout(5000)  # жду 5 сек после оформления
 
-        # 7. Проверяем доставку
-        log_message("Проверка доставки...")  # Логируем
-        found_free = False  # Флаг: найдена ли бесплатная доставка
+        # 7. проверяю доставку
+        log_message("Проверка доставки...")  # пишу
+        found_free = False  # флаг, нашел ли бесплатную
 
-        try:  # Пытаемся найти информацию о доставке
-            delivery_elements = page.locator("label[class*='Delivery']").all()  # Ищем все элементы с классом Delivery
+        try:  # пробую
+            delivery_elements = page.locator("label[class*='Delivery']").all()  # ищу элементы с инфой о доставке
 
-            for el in delivery_elements:  # Перебираем
-                text = el.inner_text()  # Получаем текст
-                if "Бесплатно" in text:  # Если есть слово "Бесплатно"
-                    found_free = True  # Устанавливаем флаг
-                    break  # Выходим
+            for el in delivery_elements:  # перебираю
+                text = el.inner_text()  # беру текст
+                if "Бесплатно" in text:  # если есть слово Бесплатно
+                    found_free = True  # флаг
+                    break  # выхожу
 
-            if found_free:  # Если нашли бесплатную доставку
-                report.append(  # Добавляем в отчет
+            if found_free:  # если нашел бесплатную
+                report.append(  # добавляю в отчет
                     f"{city_name} - обнаружена бесплатная доставка"
                 )
-                log_message(f"✅ {city_name} - БЕСПЛАТНАЯ ДОСТАВКА!")  # Логируем
-            else:  # Если не нашли
-                report.append(  # Добавляем в отчет
+                log_message(f"✅ {city_name} - БЕСПЛАТНАЯ ДОСТАВКА!")  # пишу
+            else:  # если нет
+                report.append(  # добавляю в отчет
                     f"{city_name} - бесплатная доставка не обнаружена"
                 )
-                log_message(  # Логируем
+                log_message(  # пишу
                     f"❌ {city_name} - бесплатная доставка НЕ обнаружена"
                 )
 
-        except Exception as e:  # Если ошибка при проверке
-            log_message(f"Ошибка проверки доставки: {e}")  # Логируем
-            report.append(f"{city_name} - ошибка проверки доставки")  # Добавляем в отчет
+        except Exception as e:  # если ошибка при проверке
+            log_message(f"Ошибка проверки доставки: {e}")  # пишу
+            report.append(f"{city_name} - ошибка проверки доставки")  # в отчет
 
-        # 8. Очищаем корзину
-        clear_basket_force(page)  # Вызываем функцию очистки корзины
+        # 8. чищу корзину
+        clear_basket_force(page)  # вызываю функцию очистки
 
-        # 9. Возвращаемся на главную
-        log_message("Возврат на главную...")  # Логируем
-        page.goto("https://www.leran.pro/", wait_until="domcontentloaded")  # Переходим на главную
-        page.wait_for_timeout(3000)  # Ждем 3 секунды
+        # 9. возвращаюсь на главную
+        log_message("Возврат на главную...")  # пишу
+        page.goto("https://www.leran.pro/", wait_until="domcontentloaded")  # иду на главную
+        page.wait_for_timeout(3000)  # жду 3 сек
 
-        processed_cities.add(city_name)  # Добавляем город в множество обработанных
-        log_message(f"✅ Город {city_name} обработан")  # Логируем успех
+        processed_cities.add(city_name)  # отмечаю город как обработанный
+        log_message(f"✅ Город {city_name} обработан")  # пишу что всё ок
 
-    except Exception as e:  # Если произошла критическая ошибка при обработке города
-        log_message(f"❌ ОШИБКА при обработке {city_name}:")  # Логируем
-        log_message(str(e))  # Логируем текст ошибки
-        try:  # Пытаемся сделать скриншот
+    except Exception as e:  # если критическая ошибка при обработке города
+        log_message(f"❌ ОШИБКА при обработке {city_name}:")  # пишу
+        log_message(str(e))  # текст ошибки
+        try:  # пробую сделать скрин
             page.screenshot(path=f"error_{city_name}.png")
-        except Exception:  # Если не удалось
-            pass  # Игнорируем
+        except Exception:  # если не получилось
+            pass  # дальше
 
 
-# Основной код
-def main():  # Главная функция, запускающая весь процесс
-    with sync_playwright() as p:  # Запускаем Playwright в синхронном режиме
-        browser = p.chromium.launch(  # Запускаем браузер Chromium
-            headless=False,  # headless=False означает, что мы видим окно браузера (удобно для отладки)
-            args=[  # Аргументы запуска
-                "--disable-blink-features=AutomationControlled",  # Отключаем флаг автоматизации (чтобы сайт не понял, что это бот)
+# основной код
+def main():  # главная функция, запускает весь процесс
+    with sync_playwright() as p:  # запускаю плейрайт синхронно
+        browser = p.chromium.launch(  # открываю хром
+            headless=False,  # headless=False чтоб глазами видеть что происходит
+            args=[  # аргументы
+                "--disable-blink-features=AutomationControlled",  # отключаю флаг автоматизации чтоб сайт не спалил бота
             ],
         )
-        context = browser.new_context(  # Создаем новый контекст браузера (как новое окно инкогнито)
-            user_agent=(  # Подменяем User-Agent на обычный браузер Chrome
+        context = browser.new_context(  # создаю контекст как инкогнито
+            user_agent=(  # подставляю юзер-агент обычного хрома
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
                 "AppleWebKit/537.36 (KHTML, like Gecko) "
                 "Chrome/120.0.0.0 Safari/537.36"
             ),
-            viewport={"width": 1920, "height": 1080},  # Устанавливаем разрешение экрана
+            viewport={"width": 1920, "height": 1080},  # разрешение экрана
         )
-        page = context.new_page()  # Создаем новую страницу в контексте
+        page = context.new_page()  # новая страница
 
-        # Скрываем webdriver-флаг
-        page.add_init_script(  # Добавляем скрипт, который выполняется до загрузки страницы
-            "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"  # Скрываем флаг navigator.webdriver
+        # скрываю webdriver флаг
+        page.add_init_script(  # скрипт который выполняется до загрузки страницы
+            "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"  # прячу navigator.webdriver
         )
 
-        try:  # Блок обработки исключений
-            log_message("🚀 ЗАПУСК СКРИПТА")  # Логируем начало
-            log_message(  # Логируем количество городов
+        try:  # пробую
+            log_message("🚀 ЗАПУСК СКРИПТА")  # пишу что стартую
+            log_message(  # пишу сколько городов
                 f"Всего городов для обработки: {len(ALL_CITIES)}"
             )
 
-            # Обрабатываем города по алфавиту
-            for i, city in enumerate(ALL_CITIES, 1):  # Перебираем все города с индексом (начиная с 1)
-                log_message(f"\n--- Город {i}/{len(ALL_CITIES)} ---")  # Логируем номер и название города
-                process_city(page, city)  # Вызываем функцию обработки города
-                page.wait_for_timeout(3000)  # Ждем 3 секунды перед следующим городом
+            # обрабатываю города по алфавиту
+            for i, city in enumerate(ALL_CITIES, 1):  # перебираю с индексом с 1
+                log_message(f"\n--- Город {i}/{len(ALL_CITIES)} ---")  # пишу номер и название
+                process_city(page, city)  # обрабатываю город
+                page.wait_for_timeout(3000)  # жду 3 сек перед следующим
 
-            # Отчет
-            log_message("\n" + "=" * 60)  # Логируем разделитель
-            log_message("📊 ОТЧЕТ ПО ГОРОДАМ:")  # Логируем заголовок отчета
-            log_message("=" * 60)  # Логируем разделитель
-            if report:  # Если отчет не пуст
-                for line in report:  # Перебираем строки отчета
-                    log_message(f"  • {line}")  # Логируем каждую строку
-            else:  # Если отчет пуст
-                log_message("  Нет данных для отчета")  # Логируем
-            log_message("=" * 60)  # Логируем разделитель
+            # отчет
+            log_message("\n" + "=" * 60)  # разделитель
+            log_message("📊 ОТЧЕТ ПО ГОРОДАМ:")  # заголовок
+            log_message("=" * 60)  # разделитель
+            if report:  # если отчет не пустой
+                for line in report:  # перебираю строки
+                    log_message(f"  • {line}")  # пишу каждую
+            else:  # если пусто
+                log_message("  Нет данных для отчета")  # пишу
+            log_message("=" * 60)  # разделитель
 
-        except Exception as e:  # Если произошла критическая ошибка
-            log_message(f"❌ КРИТИЧЕСКАЯ ОШИБКА: {e}")  # Логируем
-            traceback.print_exc()  # Выводим полный стек ошибки
-        finally:  # Блок, который выполняется всегда (даже если была ошибка)
-            log_message("🛑 ЗАВЕРШЕНИЕ РАБОТЫ")  # Логируем завершение
-            page.wait_for_timeout(3000)  # Ждем 3 секунды, чтобы вы увидели результат
-            context.close()  # Закрываем контекст браузера
-            browser.close()  # Закрываем сам браузер
-
-
-if __name__ == "__main__":  # Если скрипт запущен напрямую (а не импортирован как модуль)
-    main()  # Вызываем главную функцию
+        except Exception as e:  # если критическая ошибка
+            log_message(f"❌ КРИТИЧЕСКАЯ ОШИБКА: {e}")  # пишу
+            traceback.print_exc()  # вывожу стек
+        finally:  # выполняется всегда
+            log_message("🛑 ЗАВЕРШЕНИЕ РАБОТЫ")  # пишу
+            page.wait_for_timeout(3000)  # жду 3 сек чтоб успеть увидеть
+            context.close()  # закрываю контекст
+            browser.close()  # закрываю браузер
 
 
+if __name__ == "__main__":  # если скрипт запущен напрямую
+    main()  # вызываю главную функцию
 
-    # Этот скрипт представляет собой автоматизированного бота-тестировщика для интернет-магазина leran.pro. Его основная задача — проверить, доступна ли бесплатная доставка для каждого города из заданного списка при оформлении заказа.
+
+    # Короче этот скрипт — это бот-тестировщик для сайта leran.pro. Он проверяет, есть ли бесплатная доставка для каждого города из списка при оформлении заказа.
